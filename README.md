@@ -1,0 +1,1 @@
+Developed web-based application with notes posting, commenting ,searching, filtering by schedule or time conditions in Nodejs+Express+MySQL.Used Google Api to provide location service.

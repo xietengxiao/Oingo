@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Oningo</title>
+    <script src='../javascripts/jquery.min.js'></script>
+    <script src='../javascripts/filter.js'></script>
+    <link rel="stylesheet" type="text/css" href="../stylesheets/main.css">
+
+
+
+    <!--加载meta IE兼容文件-->
+
+<body>
+<h1>Oningo</h1>
+<div class="header">
+
+    <div class="menu-btn">
+        <div class="menu"></div>
+    </div>
+    <div class="nav">
+        <a href="http://localhost:3000/homepage" >SearchingNotes</a>
+        <a href="http://localhost:3000/homepage/Mynotes">MyNotes</a>
+        <a href="http://localhost:3000/homepage/Filters" class="active">Filters</a>
+        <a href="http://localhost:3000/homepage/Friends">Friends</a>
+        <a href="http://localhost:3000/homepage/Profile">Profile</a>
+    </div>
+
+</div>
+
+
+
+<div class="content">
+    <div class="cont w1000">
+        <button id="showall">Show all Notes</button>
+        <div class="title">
+            <h1> Create Filter</h1>
+            <div id = "scheduleCondition">
+            <span class="layui-breadcrumb" lay-separator="|">
+         <span >Begin date</span> <input type="date" value="2015-09-24" id="begindate"/>
+         <span>Begin time</span><input type="time" value="13:59" id="begintime"/>
+            <span>End date</span> <input type="date" value="2015-09-24" id="enddate"/>
+         <span>End time</span><input type="time" value="13:59" id="endtime"/>
+                Repeat :<span id = "repeat" style="margin: 20px">
+
+                    <select id="selectRepeat">
+  <option value ="0">No Repeat</option>
+  <option value ="1">Every Day</option>
+  <option value="2">Every Week</option>
+  <option value="3">Every Month</option>
+                    </select> </span>
+                 </span>
+                <div>
+                <span> from :</span> <input type="number" id="from" value="0"> <span>to:</span> <input type="number" id="to" value="0">
+                </div>
+
+            </div>
+         <button id="cancelSchedule">Cancel scheduleCondition</button>
+
+
+
+
+            <div id="map" style="width:45%;height:300px;float: right;display: inline-block"></div>
+
+
+
+            <div id="locationCondition">Lati :<span id = "lati" style="margin: 20px"></span>Longi: <span id = "longi" style="margin: 20px"></span>
+                <span>Chose radius</span><input type="number" value="1" id="radius"/>km</div>
+            <button id="cancelLocation">Cancel LocationCondition</button>
+
+
+            <div class="cell">
+                <div class="desc">Tag<span style="margin-left: 50px"><button id ="moretag">Cancel tagCondition</button></span></div>
+                <div id="tagRows">
+                    <select id="select3" class="selectTag" style="width: 100px;">
+                        <option value="-1">---</option>
+                    </select>
+                </div>
+                <span >From Who</span>
+                <select id="fromWho">
+                    <option value ="1">Only from me</option>
+                    <option value ="2">only from friends</option>
+                    <option value="3">from public</option>
+                </select>
+                <span><button id="cancelFromWho">cancelFromWhoCondition</button></span>
+                <div id ="stateCondition">
+                <input type="text" value="" id="state">
+                </div>
+                <button id ="cancelState">Cancel stateCondition</button>
+                <button id="submit"> Submit</button>
+                <div id ="placeid" style="visibility: hidden"></div>
+            </div>
+            <h1>MyFilters</h1>
+            <span><button id="listFilters">List My Filter</button></span>
+            <div id="Filter"></div>
+        </div>
+    </div>
+</div>
+
+
+
+</body>
+<style>
+    #map {
+        height: 20%;
+    }
+    /* Optional: Makes the sample page fill the window. */
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    /* The location pointed to by the popup tip. */
+    .popup-tip-anchor {
+        height: 0;
+        position: absolute;
+        /* The max width of the info window. */
+        width: 200px;
+    }
+    /* The bubble is anchored above the tip. */
+    .popup-bubble-anchor {
+        position: absolute;
+        width: 100%;
+        bottom: /* TIP_HEIGHT= */ 8px;
+        left: 0;
+    }
+    /* Draw the tip. */
+    .popup-bubble-anchor::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        /* Center the tip horizontally. */
+        transform: translate(-50%, 0);
+        /* The tip is a https://css-tricks.com/snippets/css/css-triangle/ */
+        width: 0;
+        height: 0;
+        /* The tip is 8px high, and 12px wide. */
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: /* TIP_HEIGHT= */ 8px solid white;
+    }
+    /* The popup bubble itself. */
+    .popup-bubble-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform: translate(-50%, -100%);
+        /* Style the info window. */
+        background-color: white;
+        padding: 5px;
+        border-radius: 5px;
+        font-family: sans-serif;
+        overflow-y: auto;
+        max-height: 60px;
+        box-shadow: 0px 2px 10px 1px rgba(0,0,0,0.5);
+    }
+</style>
+<script>
+
+    var optionstring="";
+    $.ajax({
+        url:"http://localhost:3000/tag",
+        type:'get',
+
+        success:function(data){
+            $.each(data,function(key,value){  //循环遍历后台传过来的json数据
+                optionstring += "<option value=\"" + value.val + "\" >" + value.text + "</option>";
+            });
+            $("#select3").html(optionstring); //获得要赋值的select的id，进行赋值
+        }
+    });
+    var map,  Popup;
+    function htmlspecialchars(str) {
+        if (typeof(str) == "string") {
+            str = str.replace(/&/g, "&amp;");
+            /* must do &amp; first */
+            str = str.replace(/"/g, "&quot;");
+            str = str.replace(/'/g, "&#039;");
+            str = str.replace(/</g, "&lt;");
+            str = str.replace(/>/g, "&gt;");
+        }
+        return str;
+    }
+
+    $("#showall").click(function () {
+        $.ajax({
+            url:"http://localhost:3000/notes",
+            type:'get',
+
+            success:function(data) {
+                var notes = "";
+                var i = 0;
+                $.each(data, function (key, value) {
+                    var map2 = $("#map");//循环遍历后台传过来的json数据
+                    var idname = "note" + i;
+                    i++;
+                    $.ajax({
+                        url: "http://localhost:3000/tag",
+                        type: 'post',
+                        data: 'nid=' + value.nid,
+
+                        success: function (data) {
+                            var tags = htmlspecialchars(data.tags);
+                            notes = "<div id='" + idname + "' >" + "text:" + htmlspecialchars(value.text) + "  radius:" + htmlspecialchars(value.radius) + " WhoCanSee: " + htmlspecialchars(value.WhoCanSee) + " lati:" + htmlspecialchars(value.lat) + " longi: " + htmlspecialchars(value.lng) + " starttime: " + htmlspecialchars(value.starttime) + " endtime: " + htmlspecialchars(value.endtime) + " startdate: " + htmlspecialchars(value.startdate) + " enddate: " + htmlspecialchars(value.enddate) + " from:" + htmlspecialchars(value.sfrom) + " to: " + htmlspecialchars(value.sto) + "repeatid: " + htmlspecialchars(value.repeatid) + "tags:" + htmlspecialchars(tags) + "</div>";
+
+                            map2.after(notes);
+                            var popup = new Popup(
+                                new google.maps.LatLng(value.lat, value.lng),
+                                document.getElementById(idname));
+                            popup.setMap(map);
+                        }
+
+
+                    });
+                });
+            }
+
+
+
+
+
+
+        });
+
+        $("#showall").css("visibility","hidden");
+
+
+    });
+
+    /** Initializes the map and the custom popup. */
+    function initMap() {
+
+
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: {lat: 40.7295,lng:-73.9965},
+            zoom:15
+        });
+        google.maps.event.addListener(map, 'click', function(event) {
+
+            $('#longi').text(event.latLng.lng());
+            $('#lati').text(event.latLng.lat());
+            var geocoder = new google.maps.Geocoder;
+
+
+            var latlng = {lat: parseFloat(event.latLng.lat()), lng: parseFloat(event.latLng.lng())};
+
+
+            geocoder.geocode({'location': latlng}, function(results, status) {
+                if (status === google.maps.GeocoderStatus.OK) {
+                    if (results[1]) {
+                        console.log(results[1].place_id);
+                        $("#placeid").html(results[1].place_id);
+
+                    } else {
+                        window.alert('No results found,please choose again');
+                        $('#longi').text("");
+                        $('#lati').text("");
+                        $("#placeid").html("");
+
+                    }
+                } else {
+                    window.alert('Geocoder failed due to: ' + status);
+                }
+            });
+        });
+        definePopupClass();
+
+
+
+
+    }
+
+    /** Defines the Popup class. */
+    function definePopupClass() {
+        /**
+         * A customized popup on the map.
+         * @param {!google.maps.LatLng} position
+         * @param {!Element} content
+         * @constructor
+         * @extends {google.maps.OverlayView}
+         */
+        Popup = function(position, content) {
+            this.position = position;
+
+            content.classList.add('popup-bubble-content');
+
+            var pixelOffset = document.createElement('div');
+            pixelOffset.classList.add('popup-bubble-anchor');
+            pixelOffset.appendChild(content);
+
+            this.anchor = document.createElement('div');
+            this.anchor.classList.add('popup-tip-anchor');
+            this.anchor.appendChild(pixelOffset);
+
+            // Optionally stop clicks, etc., from bubbling up to the map.
+            this.stopEventPropagation();
+        };
+        // NOTE: google.maps.OverlayView is only defined once the Maps API has
+        // loaded. That is why Popup is defined inside initMap().
+        Popup.prototype = Object.create(google.maps.OverlayView.prototype);
+
+        /** Called when the popup is added to the map. */
+        Popup.prototype.onAdd = function() {
+            this.getPanes().floatPane.appendChild(this.anchor);
+        };
+
+        /** Called when the popup is removed from the map. */
+        Popup.prototype.onRemove = function() {
+            if (this.anchor.parentElement) {
+                this.anchor.parentElement.removeChild(this.anchor);
+            }
+        };
+
+        /** Called when the popup needs to draw itself. */
+        Popup.prototype.draw = function() {
+            var divPosition = this.getProjection().fromLatLngToDivPixel(this.position);
+            // Hide the popup when it is far out of view.
+            var display =
+                Math.abs(divPosition.x) < 4000 && Math.abs(divPosition.y) < 4000 ?
+                    'block' :
+                    'none';
+
+            if (display === 'block') {
+                this.anchor.style.left = divPosition.x + 'px';
+                this.anchor.style.top = divPosition.y + 'px';
+            }
+            if (this.anchor.style.display !== display) {
+                this.anchor.style.display = display;
+            }
+        };
+
+        /** Stops clicks/drags from bubbling up to the map. */
+        Popup.prototype.stopEventPropagation = function() {
+            var anchor = this.anchor;
+            anchor.style.cursor = 'auto';
+
+            ['click', 'dblclick', 'contextmenu', 'wheel', 'mousedown', 'touchstart',
+                'pointerdown']
+                .forEach(function(event) {
+                    anchor.addEventListener(event, function(e) {
+                        e.stopPropagation();
+                    });
+                });
+        };
+    }
+
+
+
+
+$("#cancelSchedule").click(function () {
+        if ($("#scheduleCondition").css("visibility") == "visible") {
+            $("#scheduleCondition").css("visibility", "hidden");
+            $(this).html("Want ScheduleCondition");
+
+        }
+        else{
+            $("#scheduleCondition").css("visibility", "visible");
+            $(this).html("Cancel ScheduleCondition");
+        }
+    });
+    $("#cancelLocation").click(function () {
+        if ($("#locationCondition").css("visibility") == "visible") {
+            $("#locationCondition").css("visibility", "hidden");
+            $(this).html("Want LocationCondition");
+
+        }
+        else{
+            $("#locationCondition").css("visibility", "visible");
+            $(this).html("Cancel locationCondition");
+        }
+    });
+    $("#cancelFromWho").click(function () {
+        if ($("#fromWho").css("visibility") == "visible") {
+            $("#fromWho").css("visibility", "hidden");
+            $(this).html("Want FromWhoCondition");
+
+        }
+        else{
+            $("#fromWho").css("visibility", "visible");
+            $(this).html("Cancel FromWhoCondition");
+        }
+
+
+    });
+    $("#cancelState").click(function () {
+        if ($("#stateCondition").css("visibility") == "visible") {
+            $("#stateCondition").css("visibility", "hidden");
+            $(this).html("Want StateCondition");
+
+        }
+        else{
+            $("#stateCondition").css("visibility", "visible");
+            $(this).html("Cancel stateCondition");
+        }
+    });
+    $("#moretag").click(function () {
+        if($("#tagRows").css("visibility") == "hidden") {
+            $(this).html("Cancel TagCondition");
+            $("#tagRows").css("visibility", "visible");
+        }
+        else {
+            $("#tagRows").css("visibility", "hidden");
+            $(this).html("Want TagCondition");
+        }
+
+    });
+
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD_bpvQK96VM7dyPnpwcsJZ62Q-d2UNC74&callback=initMap"></script>
